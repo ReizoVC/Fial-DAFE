@@ -55,7 +55,7 @@ class HabitManagerApp(HabitManagerUI):
         self.habitListWidget.itemClicked.connect(self.display_habit_details)
         self.update_habit_list()
         self.habitListWidget.viewport().installEventFilter(self)
-        self.userLabel.setText(f"Usuario: {self.user.nombre}")
+        self.userLabel.setText(self.user.nombre)
         self.rightLayoutWidget = self.findChild(QtWidgets.QWidget, "rightSidebarContainer")
         if self.rightLayoutWidget:
             self.rightLayoutWidget.setVisible(False) 
@@ -96,13 +96,15 @@ class HabitManagerApp(HabitManagerUI):
     def update_habit_list(self):
         self.habitListWidget.clear()
         self.manager.show_habits(self.user.id_usuario)
-        for habit in self.manager.habits:
+        colors = ["#573353", "#FC9D45", "#F65B4E", "#29319F"]
+        for index, habit in enumerate(self.manager.habits):
             item_widget = QWidget()
             layout = QGridLayout(item_widget)
             
             icon_label = QLabel()
             icon_label.setFixedSize(56, 56)
-            icon_label.setStyleSheet("background-color: #FC9D45; border-radius: 9px;")
+            color = colors[index % len(colors)]
+            icon_label.setStyleSheet(f"background-color: {color}; border-radius: 9px;")
             
             text_label = QLabel(habit.nombre)
             text_label.setStyleSheet("font-size: 14px; font-family: 'Microsoft YaHei';")

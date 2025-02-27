@@ -27,53 +27,81 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="spacing">
+     <number>5</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
     <item>
-     <layout class="QVBoxLayout" name="leftSidebarLayout">
-      <item>
-       <widget class="QWidget" name="background" native="true">
-        <property name="minimumSize">
-         <size>
-          <width>180</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="styleSheet">
-         <string notr="true">QWidget#background{		
+     <widget class="QWidget" name="leftSidebarLayout" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>600</height>
+       </size>
+      </property>
+      <layout class="QVBoxLayout" name="leftSidebarLayou">
+       <item>
+        <widget class="QWidget" name="background" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>180</width>
+           <height>600</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QWidget#background{		
 	background-position: 50% 50%;
 	background-repeat: no-repeat;
 	background-image: url(:/images/bg-sidebar.png);
 }</string>
-        </property>
-        <widget class="QLabel" name="userLabel">
-         <property name="geometry">
-          <rect>
-           <x>10</x>
-           <y>90</y>
-           <width>150</width>
-           <height>21</height>
-          </rect>
          </property>
-         <property name="minimumSize">
-          <size>
-           <width>150</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Usuario: </string>
-         </property>
-        </widget>
-        <widget class="QPushButton" name="addHabitButton">
-         <property name="geometry">
-          <rect>
-           <x>0</x>
-           <y>210</y>
-           <width>181</width>
-           <height>41</height>
-          </rect>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">QPushButton#addHabitButton{
+         <widget class="QLabel" name="userLabel">
+          <property name="geometry">
+           <rect>
+            <x>50</x>
+            <y>40</y>
+            <width>121</width>
+            <height>31</height>
+           </rect>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="addHabitButton">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>210</y>
+            <width>181</width>
+            <height>41</height>
+           </rect>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QPushButton#addHabitButton{
 	border: none;
 	background-color: transparent;
 	color: #fff;
@@ -82,51 +110,97 @@
 QPushButton#addHabitButton:hover{
 	background-color: #573353;
 }</string>
-         </property>
-         <property name="text">
-          <string>Agregar Hábito</string>
-         </property>
-        </widget>
-        <widget class="QPushButton" name="logoutButton">
-         <property name="geometry">
-          <rect>
-           <x>11</x>
-           <y>550</y>
-           <width>161</width>
-           <height>23</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Cerrar Sesión</string>
-         </property>
-        </widget>
-        <widget class="QLabel" name="label">
-         <property name="geometry">
-          <rect>
-           <x>0</x>
-           <y>160</y>
-           <width>181</width>
-           <height>41</height>
-          </rect>
-         </property>
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-           <weight>50</weight>
-           <bold>false</bold>
-          </font>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">background-color: #573353;
+          </property>
+          <property name="text">
+           <string>Agregar Hábito</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="logoutButton">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>550</y>
+            <width>181</width>
+            <height>41</height>
+           </rect>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QPushButton#logoutButton{
+	border: none;
+	background-color: transparent;
+	color: #fff;
+}
+
+QPushButton#logoutButton:hover{
+	background-color: #573353;
+}</string>
+          </property>
+          <property name="text">
+           <string>Log Out</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="label">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>160</y>
+            <width>181</width>
+            <height>41</height>
+           </rect>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: #573353;
 color: #fff;</string>
-         </property>
-         <property name="text">
-          <string> Habitos</string>
-         </property>
+          </property>
+          <property name="text">
+           <string> Habitos</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+         <widget class="QWidget" name="widget" native="true">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>40</y>
+            <width>30</width>
+            <height>30</height>
+           </rect>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>30</width>
+            <height>30</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>30</width>
+            <height>30</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(255, 170, 0);
+border-radius: 15px;</string>
+          </property>
+         </widget>
         </widget>
-       </widget>
-      </item>
-     </layout>
+       </item>
+      </layout>
+     </widget>
     </item>
     <item>
      <layout class="QVBoxLayout" name="mainLayout">
@@ -171,6 +245,9 @@ color: #fff;</string>
       </item>
       <item>
        <widget class="QListWidget" name="habitListWidget">
+        <property name="styleSheet">
+         <string notr="true">border: none;</string>
+        </property>
         <property name="iconSize">
          <size>
           <width>56</width>
