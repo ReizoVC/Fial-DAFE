@@ -1,0 +1,116 @@
+<ui version="4.0">
+ <class>EditHabitDialog</class>
+ <widget class="QDialog" name="EditHabitDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Editar Hábito</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLineEdit" name="habitNameInput">
+     <property name="placeholderText">
+      <string>Nombre del Hábito</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="habitDescriptionInput">
+     <property name="placeholderText">
+      <string>Descripción del Hábito</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTimeEdit" name="habitStartTimeInput">
+     <property name="displayFormat">
+      <string>HH:mm</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTimeEdit" name="habitEndTimeInput">
+     <property name="displayFormat">
+      <string>HH:mm</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="frecuenciaComboBox"/>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="daysOfWeekGroupBox">
+     <property name="title">
+      <string>Días de la Semana</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QCheckBox" name="mondayCheckbox">
+        <property name="text">
+         <string>Lunes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="tuesdayCheckbox">
+        <property name="text">
+         <string>Martes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="wednesdayCheckbox">
+        <property name="text">
+         <string>Miércoles</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="thursdayCheckbox">
+        <property name="text">
+         <string>Jueves</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="fridayCheckbox">
+        <property name="text">
+         <string>Viernes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="saturdayCheckbox">
+        <property name="text">
+         <string>Sábado</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="sundayCheckbox">
+        <property name="text">
+         <string>Domingo</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="saveButton">
+     <property name="text">
+      <string>Guardar</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
