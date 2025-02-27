@@ -1,0 +1,2795 @@
+Estructura del Proyecto:
+[Proyecto Habitos]
+    - .env
+    - .gitignore
+    - compiler.py
+    - config.py
+    - main.py
+    - proyecto_completo.txt
+    - README.md
+    - requirements.txt
+    - session.json
+    [controllers]
+        - edit_habit_dialog.py
+        - habit_manager_app.py
+        - login.py
+        - register.py
+    [models]
+        - habit.py
+        - habit_manager.py
+        - progreso.py
+        - recordatorio.py
+        - usuario.py
+    [UI]
+        - bg.qrc
+        - bg_rc.py
+        - edit_habit_dialog.ui
+        - habit_manager.ui
+        - login.ui
+        - register.ui
+        - splash_screen.ui
+        [images]
+            - acBg.png
+            - bg-sidebar.png
+            - bg.png
+            - Union.png
+    [view]
+        - edit_habit_dialog.py
+        - habit_manager.py
+        - login_ui.py
+        - register_ui.py
+        - splash_screen.py
+
+====.====
+
+--- .env ---
+SUPABASE_URL=https://erflrrwlacgnwxlarcxr.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyZmxycndsYWNnbnd4bGFyY3hyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk3NDE0OTIsImV4cCI6MjA1NTMxNzQ5Mn0.VCPZi3oUgcQIPDCfTMFhuFyJil4wbE3YHydo16SjFcA
+DB_USER=postgres.erflrrwlacgnwxlarcxr
+DB_PASSWORD=urqxvGPNIqXvdOCL
+DB_HOST=aws-0-us-west-1.pooler.supabase.com
+DB_PORT=6543
+DB_NAME=postgres
+
+
+--- config.py ---
+from dotenv import load_dotenv
+import os
+
+# Cargar variables de entorno desde el archivo .env
+load_dotenv()
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+
+
+--- main.py ---
+from PyQt5 import QtWidgets
+from controllers.habit_manager_app import SplashScreenApp
+import UI.bg_rc  
+import threading
+import time
+
+def check_notifications(manager):
+    while True:
+        manager.check_and_send_notifications()
+        time.sleep(60)  # Verificar cada minuto
+
+def main():
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    splash = SplashScreenApp()
+    splash.show()
+
+    # Iniciar el hilo para verificar notificaciones
+    manager = splash.manager
+    print("🟢 Iniciando hilo de notificaciones...")
+    notification_thread = threading.Thread(target=manager.check_and_send_notifications)
+    notification_thread.daemon = True
+    notification_thread.start()
+
+    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()
+
+--- proyecto_completo.txt ---
+
+
+--- requirements.txt ---
+aiohappyeyeballs==2.4.6
+aiohttp==3.11.12
+aiohttp-retry==2.9.1
+aiosignal==1.3.2
+annotated-types==0.7.0
+anyio==4.8.0
+attrs==25.1.0
+certifi==2025.1.31
+charset-normalizer==3.4.1
+deprecation==2.1.0
+frozenlist==1.5.0
+gotrue==2.11.3
+h11==0.14.0
+h2==4.2.0
+hpack==4.1.0
+httpcore==1.0.7
+httpx==0.28.1
+hyperframe==6.1.0
+idna==3.10
+multidict==6.1.0
+packaging==24.2
+pillow==11.1.0
+postgrest==0.19.3
+propcache==0.2.1
+pydantic==2.10.6
+pydantic_core==2.27.2
+PyJWT==2.10.1
+PyQt5==5.15.11
+PyQt5-Qt5==5.15.2
+PyQt5_sip==12.17.0
+pystray==0.19.5
+python-dateutil==2.9.0.post0
+realtime==2.3.0
+requests==2.32.3
+six==1.17.0
+sniffio==1.3.1
+storage3==0.11.3
+StrEnum==0.4.15
+supabase==2.13.0
+supafunc==0.9.3
+twilio==9.4.5
+typing_extensions==4.12.2
+urllib3==2.3.0
+websockets==14.2
+yarl==1.18.3
+
+
+====controllers====
+
+--- edit_habit_dialog.py ---
+from PyQt5 import QtWidgets, QtCore
+from view.edit_habit_dialog import EditHabitDialogUI
+
+class EditHabitDialog(EditHabitDialogUI):
+    def __init__(self, habit=None, parent=None):
+        super(EditHabitDialog, self).__init__(parent)
+        self.habit = habit
+        self.frecuenciaComboBox.addItems(["Diario", "Entre semana", "Fin de semana", "Personalizado"])
+        self.frecuenciaComboBox.currentIndexChanged.connect(self.toggle_custom_days)
+        if habit:
+            self.habitNameInput.setText(habit.nombre)
+            self.habitDescriptionInput.setText(habit.descripcion)
+            self.habitStartTimeInput.setTime(QtCore.QTime.fromString(habit.hora_inicio, "HH:mm"))
+            self.habitEndTimeInput.setTime(QtCore.QTime.fromString(habit.hora_fin, "HH:mm"))
+            self.set_frecuencia(habit.frecuencia)
+        else:
+            self.frecuenciaComboBox.setCurrentText("Personalizado")
+            self.daysOfWeekGroupBox.setVisible(True)
+        self.saveButton.clicked.connect(self.accept)
+        self.show()
+
+    def toggle_custom_days(self, index):
+        is_custom = self.frecuenciaComboBox.currentText() == "Personalizado"
+        self.daysOfWeekGroupBox.setVisible(is_custom)
+
+    def set_frecuencia(self, frecuencia):
+        if frecuencia == ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']:
+            self.frecuenciaComboBox.setCurrentText("Diario")
+        elif frecuencia == ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']:
+            self.frecuenciaComboBox.setCurrentText("Entre semana")
+        elif frecuencia == ['Sábado', 'Domingo']:
+            self.frecuenciaComboBox.setCurrentText("Fin de semana")
+        else:
+            self.frecuenciaComboBox.setCurrentText("Personalizado")
+            self.mondayCheckbox.setChecked('Lunes' in frecuencia)
+            self.tuesdayCheckbox.setChecked('Martes' in frecuencia)
+            self.wednesdayCheckbox.setChecked('Miércoles' in frecuencia)
+            self.thursdayCheckbox.setChecked('Jueves' in frecuencia)
+            self.fridayCheckbox.setChecked('Viernes' in frecuencia)
+            self.saturdayCheckbox.setChecked('Sábado' in frecuencia)
+            self.sundayCheckbox.setChecked('Domingo' in frecuencia)
+
+    def get_habit_data(self):
+        nombre = self.habitNameInput.text()
+        descripcion = self.habitDescriptionInput.text()
+        hora_inicio = self.habitStartTimeInput.time().toString("HH:mm")
+        hora_fin = self.habitEndTimeInput.time().toString("HH:mm")
+        frecuencia = []
+        if self.frecuenciaComboBox.currentText() == "Diario":
+            frecuencia = [1, 2, 3, 4, 5, 6, 7]
+        elif self.frecuenciaComboBox.currentText() == "Entre semana":
+            frecuencia = [1, 2, 3, 4, 5]
+        elif self.frecuenciaComboBox.currentText() == "Fin de semana":
+            frecuencia = [6, 7]
+        else:
+            if self.mondayCheckbox.isChecked():
+                frecuencia.append(1)
+            if self.tuesdayCheckbox.isChecked():
+                frecuencia.append(2)
+            if self.wednesdayCheckbox.isChecked():
+                frecuencia.append(3)
+            if self.thursdayCheckbox.isChecked():
+                frecuencia.append(4)
+            if self.fridayCheckbox.isChecked():
+                frecuencia.append(5)
+            if self.saturdayCheckbox.isChecked():
+                frecuencia.append(6)
+            if self.sundayCheckbox.isChecked():
+                frecuencia.append(7)
+        return nombre, descripcion, frecuencia, hora_inicio, hora_fin
+
+
+--- habit_manager_app.py ---
+from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt5.QtGui import QColor
+from view.splash_screen import SplashScreenUI
+from view.habit_manager import HabitManagerUI
+from controllers.edit_habit_dialog import EditHabitDialog
+from models.habit_manager import HabitManager
+from .login import LoginApp
+import UI.bg_rc  # Importar el archivo de recursos compilado
+from PyQt5.QtWidgets import QListWidgetItem, QWidget, QGridLayout, QLabel, QSpacerItem, QSizePolicy
+
+class SplashScreenApp(SplashScreenUI):
+    def __init__(self, parent=None):
+        super(SplashScreenApp, self).__init__(parent)
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.progress)
+        self.timer.start(30)
+        self.counter = 0
+        self.add_shadow_to_progress_bar()
+        self.manager = HabitManager()  # Inicializar el atributo manager
+        self.show()
+
+
+    def add_shadow_to_progress_bar(self):
+        shadow = QtWidgets.QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(32.6)
+        shadow.setXOffset(4)
+        shadow.setYOffset(-4)
+        shadow.setColor(QtGui.QColor(0, 0, 0, 64))
+        self.progressBar.setGraphicsEffect(shadow)
+
+    def progress(self):
+        self.counter += 1
+        self.progressBar.setValue(self.counter)
+        if self.counter >= 100:
+            self.timer.stop()
+            user = self.manager.load_session()
+            if user:
+                self.main = HabitManagerApp(user)
+                self.main.show()
+            else:
+                self.login = LoginApp()
+                if self.login.exec_() == QtWidgets.QDialog.Accepted:
+                    self.main = HabitManagerApp(self.login.current_user)
+                    self.main.show()
+            self.close()
+
+    
+class HabitManagerApp(HabitManagerUI):
+    def __init__(self, user):
+        super().__init__()
+        self.manager = HabitManager()
+        self.user = user
+
+        self.addHabitButton.clicked.connect(self.open_add_habit_dialog)
+        self.updateHabitButton.clicked.connect(self.open_edit_habit_dialog)
+        self.deleteHabitButton.clicked.connect(self.confirm_delete_habit)
+        self.logoutButton.clicked.connect(self.logout)
+        self.habitListWidget.itemClicked.connect(self.display_habit_details)
+
+        self.update_habit_list()
+        self.habitListWidget.viewport().installEventFilter(self)
+
+        self.userLabel.setText(self.user.nombre)
+
+        self.rightLayoutWidget = self.findChild(QtWidgets.QWidget, "rightSidebarContainer")
+        if self.rightLayoutWidget:
+            self.rightLayoutWidget.setVisible(False)
+            self.apply_shadow_effect(self.rightLayoutWidget)
+
+        
+    
+    def apply_shadow_effect(self, widget):
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(30)
+        shadow.setXOffset(-3)
+        shadow.setYOffset(0)
+        shadow.setColor(QColor(0, 0, 0, 100))  # Color negro con opacidad
+        widget.setGraphicsEffect(shadow)
+
+    
+
+    def open_add_habit_dialog(self):
+        dialog = EditHabitDialog(parent=self)
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            id_usuario = self.user.id_usuario  # Asegurarse de usar el ID del usuario en sesión actual
+            nombre, descripcion, frecuencia, hora_inicio, hora_fin = dialog.get_habit_data()
+            self.manager.add_habit(id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin)
+            self.update_habit_list()
+
+    def open_edit_habit_dialog(self):
+        habit_name = self.habitTitleLabel.text()
+        habit = next((habit for habit in self.manager.habits if habit.nombre == habit_name), None)
+
+        if habit:
+            dialog = EditHabitDialog(habit, self)
+            if dialog.exec_() == QtWidgets.QDialog.Accepted:
+                nombre, descripcion, frecuencia, hora_inicio, hora_fin = dialog.get_habit_data()
+
+                # Actualizar en la base de datos
+                self.manager.update_habit(habit.id_habito, habit.id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin)
+                
+                # Refrescar la lista de hábitos en la UI
+                self.update_habit_list()
+
+                # Esperar brevemente para que la UI se actualice completamente
+                QtWidgets.QApplication.processEvents()
+
+                # Buscar el hábito en la lista actualizada
+                items = self.habitListWidget.findItems(nombre, QtCore.Qt.MatchExactly)
+
+                if items:  # Si el hábito fue encontrado en la UI, mostrarlo
+                    self.display_habit_details(items[0])
+                else:
+                    print(f"⚠️ No se encontró el hábito '{nombre}' en la lista después de actualizar.")
+
+
+    def confirm_delete_habit(self):
+        habit_name = self.habitTitleLabel.text()  # Usar habitTitleLabel en lugar de habitDetailsLabel
+        habit = next((habit for habit in self.manager.habits if habit.nombre == habit_name), None)
+        if habit:
+            reply = QtWidgets.QMessageBox.question(self, 'Confirmar Eliminación', f"¿Estás seguro de que deseas eliminar el hábito '{habit.nombre}'?", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
+            if reply == QtWidgets.QMessageBox.Yes:
+                self.manager.delete_habit(habit.id_habito)
+                self.update_habit_list()
+                if self.rightLayoutWidget:
+                    self.rightLayoutWidget.setVisible(False)  # Ocultar el widget que contiene la barra lateral derecha después de eliminar un hábito
+
+    def update_habit_list(self):
+        self.habitListWidget.clear()
+        self.manager.show_habits(self.user.id_usuario)
+        colors = ["#573353", "#FC9D45", "#F65B4E", "#29319F"]
+        for index, habit in enumerate(self.manager.habits):
+            item_widget = QWidget()
+            layout = QGridLayout(item_widget)
+            
+            icon_label = QLabel()
+            icon_label.setFixedSize(56, 56)
+            color = colors[index % len(colors)]
+            icon_label.setStyleSheet(f"background-color: {color}; border-radius: 9px;")
+            
+            text_label = QLabel(habit.nombre)
+            text_label.setStyleSheet("font-size: 14px; font-family: 'Microsoft YaHei';")
+            
+            spacer = QSpacerItem(40, 20, QSizePolicy.Fixed, QSizePolicy.Minimum)
+            
+            layout.addWidget(icon_label, 1, 0)
+            layout.addItem(spacer, 1, 1)
+            layout.addWidget(text_label, 1, 2)
+            
+            item = QListWidgetItem(self.habitListWidget)
+            item.setSizeHint(item_widget.sizeHint())
+            self.habitListWidget.addItem(item)
+            self.habitListWidget.setItemWidget(item, item_widget)
+
+    def display_habit_details(self, item):
+        if item is None:
+            print("Error: Se hizo clic en un elemento vacío de la lista.")
+            return
+
+        widget = self.habitListWidget.itemWidget(item)
+        if widget is None:
+            print("Error: No se encontró el widget del item seleccionado.")
+            return
+
+        labels = widget.findChildren(QLabel)  # Buscar todos los QLabel dentro del widget
+        print("Labels encontrados:", [label.text() for label in labels])
+
+        habit_label = next((label for label in labels if label.text().strip()), None)
+        if habit_label is None:
+            print("Error: No se encontró QLabel con texto dentro del item seleccionado.")
+            return
+
+        habit_name = habit_label.text().strip()
+        print(f"Clicked on habit: {habit_name}")
+        print("Lista de hábitos disponibles:", [habit.nombre for habit in self.manager.habits])
+
+        habit = next((habit for habit in self.manager.habits if habit.nombre == habit_name), None)
+        if habit is None:
+            print("Error: No se encontró el hábito en la lista.")
+            return
+
+        print(f"Frecuencia en base de datos: {habit.frecuencia}")
+
+        frecuencia = ', '.join(self.manager.convert_frecuencia_to_days(habit.frecuencia))
+        print(f"Frecuencia convertida: {frecuencia}")
+
+        self.habitTitleLabel.setText(habit.nombre)
+        self.habitDescriptionLabel.setText(habit.descripcion)
+        self.habitFrequencyLabel.setText(frecuencia)  # Verifica que aquí se asigna correctamente
+        self.habitTimeLabel.setText(f"{habit.hora_inicio} - {habit.hora_fin}")
+        self.streakDaysLabel.setText("15 días")
+
+        if self.rightLayoutWidget:
+            self.rightLayoutWidget.setVisible(True)
+            print("Sidebar mostrado")
+
+
+
+
+
+    def eventFilter(self, source, event):
+        if event.type() == QtCore.QEvent.MouseButtonPress and source is self.habitListWidget.viewport():
+            item = self.habitListWidget.itemAt(event.pos())
+            if item is None and self.rightLayoutWidget:
+                self.rightLayoutWidget.setVisible(False)  # Ocultar el widget que contiene la barra lateral derecha si se hace clic fuera de un hábito
+        return super().eventFilter(source, event)
+
+    def logout(self):
+        self.manager.current_user = None
+        self.manager.clear_session()
+        self.close()
+        self.login = LoginApp()
+        if self.login.exec_() == QtWidgets.QDialog.Accepted:
+            self.__init__(self.login.current_user)
+            self.show()
+        else:
+            QtWidgets.QApplication.quit()
+
+--- login.py ---
+from PyQt5 import QtWidgets
+from view.login_ui import LoginUI
+from models.habit_manager import HabitManager
+from .register import RegisterApp
+
+class LoginApp(LoginUI):
+    def __init__(self, parent=None):
+        super(LoginApp, self).__init__(parent)
+        self.manager = HabitManager()
+        self.loginButton.clicked.connect(self.login)
+        self.registerLabel.linkActivated.connect(self.open_register_dialog)
+        self.current_user = None
+        self.show()
+
+    def login(self):
+        email = self.emailInput.text()
+        password = self.passwordInput.text()
+        user = self.manager.authenticate_user(email, password)
+        if user:
+            self.current_user = user
+            self.accept()
+        else:
+            QtWidgets.QMessageBox.warning(self, 'Error', 'Credenciales incorrectas')
+
+    def open_register_dialog(self):
+        dialog = RegisterApp(self)
+        dialog.exec_()
+
+
+--- register.py ---
+from PyQt5 import QtWidgets
+from view.register_ui import RegisterUI
+from models.habit_manager import HabitManager
+
+class RegisterApp(RegisterUI):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.manager = HabitManager()
+        self.registerButton.clicked.connect(self.register)
+        self.new_user = None
+
+    def register(self):
+        nombre = self.nameInput.text()
+        email = self.emailInput.text()
+        password = self.passwordInput.text()
+        self.manager.add_user(nombre, email, password)
+        self.new_user = self.manager.authenticate_user(email, password)
+        self.accept()
+
+
+====models====
+
+--- habit.py ---
+class Habit:
+    def __init__(self, id_habito, id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin):
+        self.id_habito = id_habito
+        self.id_usuario = id_usuario
+        self.nombre = nombre
+        self.descripcion = descripcion
+        self.frecuencia = frecuencia
+        self.hora_inicio = hora_inicio
+        self.hora_fin = hora_fin
+
+    def __str__(self):
+        return f"Hábito: {self.nombre}, Descripción: {self.descripcion}, Frecuencia: {self.frecuencia}, Hora de inicio: {self.hora_inicio}, Hora de fin: {self.hora_fin}"
+
+--- habit_manager.py ---
+import json
+import time
+import threading
+from datetime import datetime
+from supabase import create_client, Client
+from plyer import notification
+from models.habit import Habit
+from models.usuario import Usuario
+from models.recordatorio import Recordatorio
+from config import SUPABASE_URL, SUPABASE_KEY
+
+class HabitManager:
+    def __init__(self):
+        self.habits = []
+        self.users = []
+        self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        self.current_user = None
+
+    def add_habit(self, id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin):
+        frecuencia_numerica = ''.join(map(str, frecuencia))
+        data = {
+            "id_usuario": id_usuario,
+            "nombre": nombre,
+            "descripcion": descripcion,
+            "frecuencia": frecuencia_numerica,
+            "hora_inicio": hora_inicio,
+            "hora_fin": hora_fin
+        }
+        response = self.supabase.table('habitos').insert(data).execute()
+        habit = Habit(**response.data[0])
+        self.habits.append(habit)
+        self.create_reminders(habit)
+
+    def create_reminders(self, habit):
+        reminders = [
+            (habit.id_usuario, habit.id_habito, f"Recuerda realizar el hábito: {habit.nombre}", 'inicio'),
+            (habit.id_usuario, habit.id_habito, f"¿Has completado el hábito: {habit.nombre}?", 'fin')
+        ]
+        for reminder in reminders:
+            self.add_reminder(*reminder)
+
+    def add_reminder(self, id_usuario, id_habito, mensaje, tipo):
+        data = {"id_usuario": id_usuario, "id_habito": id_habito, "mensaje": mensaje, "tipo": tipo}
+        response = self.supabase.table('recordatorios').insert(data).execute()
+        return Recordatorio(**response.data[0])
+
+    def update_habit(self, id_habito, id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin):
+        frecuencia_numerica = ''.join(map(str, frecuencia))
+        data = {
+            "id_usuario": id_usuario,
+            "nombre": nombre,
+            "descripcion": descripcion,
+            "frecuencia": frecuencia_numerica,
+            "hora_inicio": hora_inicio,
+            "hora_fin": hora_fin
+        }
+
+        # Intentar actualizar en la base de datos
+        response = self.supabase.table('habitos').update(data).eq('id_habito', id_habito).execute()
+        
+        if not response.data:
+            print(f"⚠️ Error al actualizar el hábito con ID {id_habito}")
+            return False  # Indica que la actualización falló
+
+        # Buscar y actualizar el hábito en la lista local
+        for habit in self.habits:
+            if habit.id_habito == id_habito:
+                habit.nombre = nombre
+                habit.descripcion = descripcion
+                habit.frecuencia = frecuencia_numerica
+                habit.hora_inicio = hora_inicio
+                habit.hora_fin = hora_fin
+                break  # No necesitamos seguir buscando
+
+        # Actualizar recordatorios
+        self.delete_reminders(id_habito)
+        self.create_reminders(Habit(id_habito, id_usuario, nombre, descripcion, frecuencia_numerica, hora_inicio, hora_fin))
+
+        return True  # Indica que la actualización fue exitosa
+
+
+    def delete_reminders(self, id_habito):
+        self.supabase.table('recordatorios').delete().eq('id_habito', id_habito).execute()
+
+    def delete_habit(self, id_habito):
+        self.supabase.table('habitos').delete().eq('id_habito', id_habito).execute()
+        self.habits = [habit for habit in self.habits if habit.id_habito != id_habito]
+        self.delete_reminders(id_habito)
+
+    def show_habits(self, id_usuario):
+        response = self.supabase.table('habitos').select('*').eq('id_usuario', id_usuario).execute()
+        self.habits = [Habit(**habit) for habit in response.data]
+
+    def get_reminders(self, id_usuario):
+        response = self.supabase.table('recordatorios').select('*').eq('id_usuario', id_usuario).execute()
+        return response.data if response.data else []
+
+    def convert_frecuencia_to_days(self, frecuencia):
+        days_map = {
+            '1': 'Lunes', '2': 'Martes', '3': 'Miércoles',
+            '4': 'Jueves', '5': 'Viernes', '6': 'Sábado', '7': 'Domingo'
+        }
+        return [days_map[day] for day in str(frecuencia) if day in days_map]
+
+    def add_user(self, nombre, email, contraseña):
+        data = {"nombre": nombre, "email": email, "contraseña": contraseña}
+        response = self.supabase.table('usuarios').insert(data).execute()
+        user = Usuario(**response.data[0])
+        self.users.append(user)
+
+    def show_users(self):
+        response = self.supabase.table('usuarios').select('*').execute()
+        self.users = [Usuario(**user) for user in response.data]
+
+    def authenticate_user(self, email, password):
+        response = self.supabase.table('usuarios').select('id_usuario, nombre, email, contraseña').eq('email', email).eq('contraseña', password).execute()
+        if response.data:
+            self.current_user = Usuario(**response.data[0])
+            self.save_session()
+            return self.current_user
+        return None
+
+    def save_session(self):
+        if self.current_user:
+            with open('session.json', 'w') as f:
+                json.dump(self.current_user.__dict__, f)
+
+    def load_session(self):
+        try:
+            with open('session.json', 'r') as f:
+                user_data = json.load(f)
+                if user_data:
+                    self.current_user = Usuario(**user_data)
+                    return self.current_user
+        except FileNotFoundError:
+            return None
+        return None
+
+    def clear_session(self):
+        with open('session.json', 'w') as f:
+            json.dump({}, f)
+
+    def check_and_send_notifications(self):
+        if not self.current_user:
+            return
+        
+        reminders = self.get_reminders(self.current_user.id_usuario)
+        while True:
+            now = datetime.now().strftime("%H:%M")
+            for reminder in reminders:
+                habit = next((h for h in self.habits if h.id_habito == reminder['id_habito']), None)
+                if habit:
+                    if (reminder['tipo'] == "inicio" and habit.hora_inicio == now) or \
+                    (reminder['tipo'] == "fin" and habit.hora_fin == now):
+                        self.send_notification(reminder['mensaje'])
+            time.sleep(60)
+
+    def send_notification(self, message):
+        notification.notify(
+            title='Recordatorio de Hábito',
+            message=message,
+            app_name='Proyecto Habitos',
+            timeout=10
+        )
+
+
+--- progreso.py ---
+class Progreso:
+    def __init__(self, id_progreso, id_habito, fecha, completado):
+        self.id_progreso = id_progreso
+        self.id_habito = id_habito
+        self.fecha = fecha
+        self.completado = completado
+
+    def __str__(self):
+        return f"Progreso: Hábito ID {self.id_habito}, Fecha: {self.fecha}, Completado: {self.completado}"
+
+
+--- recordatorio.py ---
+class Recordatorio:
+    def __init__(self, id_recordatorio, id_usuario, id_habito, mensaje, tipo):
+        self.id_recordatorio = id_recordatorio
+        self.id_usuario = id_usuario
+        self.id_habito = id_habito
+        self.mensaje = mensaje
+        self.tipo = tipo  # 'inicio' o 'fin'
+
+    def __str__(self):
+        return f"Recordatorio: Usuario ID {self.id_usuario}, Hábito ID {self.id_habito}, Mensaje: {self.mensaje}, Tipo: {self.tipo}"
+
+
+--- usuario.py ---
+class Usuario:
+    def __init__(self, id_usuario, nombre, email, contraseña):
+        self.id_usuario = id_usuario
+        self.nombre = nombre
+        self.email = email
+        self.contraseña = contraseña
+
+    def __str__(self):
+        return f"Usuario: {self.nombre}, Email: {self.email}"
+
+
+====UI====
+
+--- bg.qrc ---
+<RCC>
+  <qresource prefix="/">
+    <file>images/bg-sidebar.png</file>
+    <file>images/acBg.png</file>
+    <file>images/Union.png</file>
+    <file>images/bg.png</file>
+  </qresource>
+</RCC>
+
+
+--- edit_habit_dialog.ui ---
+<ui version="4.0">
+ <class>EditHabitDialog</class>
+ <widget class="QDialog" name="EditHabitDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Editar Hábito</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLineEdit" name="habitNameInput">
+     <property name="placeholderText">
+      <string>Nombre del Hábito</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="habitDescriptionInput">
+     <property name="placeholderText">
+      <string>Descripción del Hábito</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTimeEdit" name="habitStartTimeInput">
+     <property name="displayFormat">
+      <string>HH:mm</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTimeEdit" name="habitEndTimeInput">
+     <property name="displayFormat">
+      <string>HH:mm</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="frecuenciaComboBox"/>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="daysOfWeekGroupBox">
+     <property name="title">
+      <string>Días de la Semana</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QCheckBox" name="mondayCheckbox">
+        <property name="text">
+         <string>Lunes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="tuesdayCheckbox">
+        <property name="text">
+         <string>Martes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="wednesdayCheckbox">
+        <property name="text">
+         <string>Miércoles</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="thursdayCheckbox">
+        <property name="text">
+         <string>Jueves</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="fridayCheckbox">
+        <property name="text">
+         <string>Viernes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="saturdayCheckbox">
+        <property name="text">
+         <string>Sábado</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="sundayCheckbox">
+        <property name="text">
+         <string>Domingo</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="saveButton">
+     <property name="text">
+      <string>Guardar</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+
+
+--- habit_manager.ui ---
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HabitManagerUI</class>
+ <widget class="QMainWindow" name="HabitManagerUI">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1080</width>
+    <height>607</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1080</width>
+    <height>607</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1080</width>
+    <height>607</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Gestión de Hábitos</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="spacing">
+     <number>5</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>9</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QWidget" name="leftSidebarLayout" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>600</height>
+       </size>
+      </property>
+      <layout class="QVBoxLayout" name="leftSidebarLayou">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>1</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QWidget" name="background" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>180</width>
+           <height>600</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QWidget#background{		
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	background-image: url(:/images/bg-sidebar.png);
+}</string>
+         </property>
+         <widget class="QLabel" name="userLabel">
+          <property name="geometry">
+           <rect>
+            <x>50</x>
+            <y>40</y>
+            <width>121</width>
+            <height>31</height>
+           </rect>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="addHabitButton">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>210</y>
+            <width>181</width>
+            <height>41</height>
+           </rect>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QPushButton#addHabitButton{
+	border: none;
+	background-color: transparent;
+	color: #fff;
+}
+
+QPushButton#addHabitButton:hover{
+	background-color: #573353;
+}</string>
+          </property>
+          <property name="text">
+           <string>Agregar Hábito</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="logoutButton">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>550</y>
+            <width>181</width>
+            <height>41</height>
+           </rect>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QPushButton#logoutButton{
+	border: none;
+	background-color: transparent;
+	color: #fff;
+}
+
+QPushButton#logoutButton:hover{
+	background-color: #573353;
+}</string>
+          </property>
+          <property name="text">
+           <string>Log Out</string>
+          </property>
+         </widget>
+         <widget class="QLabel" name="label">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>160</y>
+            <width>181</width>
+            <height>41</height>
+           </rect>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>12</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: #573353;
+color: #fff;</string>
+          </property>
+          <property name="text">
+           <string> Habitos</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+         <widget class="QWidget" name="widget" native="true">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>40</y>
+            <width>30</width>
+            <height>30</height>
+           </rect>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>30</width>
+            <height>30</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>30</width>
+            <height>30</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(255, 170, 0);
+border-radius: 15px;</string>
+          </property>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QVBoxLayout" name="mainLayout">
+      <item>
+       <widget class="QLabel" name="habitListTitleLabel">
+        <property name="font">
+         <font>
+          <pointsize>18</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>Mis Hábitos</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QFrame" name="habitListSeparatorLine">
+        <property name="minimumSize">
+         <size>
+          <width>300</width>
+          <height>5</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>5</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">background-color: #573353; border-radius: 2;</string>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::HLine</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Sunken</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QListWidget" name="habitListWidget">
+        <property name="styleSheet">
+         <string notr="true">border: none;</string>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>56</width>
+          <height>56</height>
+         </size>
+        </property>
+        <property name="spacing">
+         <number>10</number>
+        </property>
+        <property name="viewMode">
+         <enum>QListView::ListMode</enum>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QWidget" name="rightSidebarContainer" native="true">
+      <property name="styleSheet">
+       <string notr="true">QWidget#rightSidebarContainer {
+    background-color: white;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+}
+</string>
+      </property>
+      <layout class="QVBoxLayout" name="rightLayout">
+       <item>
+        <widget class="QLabel" name="habitTitleLabel">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>30</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>30</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Klasik</family>
+           <pointsize>18</pointsize>
+           <weight>50</weight>
+           <bold>false</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>Nombre del Hábito</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="streakLayout">
+         <property name="sizeConstraint">
+          <enum>QLayout::SetDefaultConstraint</enum>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="streakLayoutWithIcon">
+           <item>
+            <widget class="QLabel" name="streakIcon">
+             <property name="minimumSize">
+              <size>
+               <width>40</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>40</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">background-color: black; 
+border-radius: 10px;
+background-color: rgb(246, 91, 78);</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QWidget" name="widget_5" native="true">
+             <layout class="QVBoxLayout" name="verticalLayout_4">
+              <item>
+               <widget class="QLabel" name="streakSubtitleLabel">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>16</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">color: gray;</string>
+                </property>
+                <property name="text">
+                 <string>Racha Actual</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading</set>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="streakDaysLabel">
+                <property name="font">
+                 <font>
+                  <pointsize>18</pointsize>
+                  <weight>75</weight>
+                  <bold>true</bold>
+                 </font>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true"/>
+                </property>
+                <property name="text">
+                 <string>15 días</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading</set>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QFrame" name="separatorLine">
+         <property name="minimumSize">
+          <size>
+           <width>300</width>
+           <height>5</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>5</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>9</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: #573353; border-radius: 2;</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::HLine</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+         <property name="lineWidth">
+          <number>1</number>
+         </property>
+         <property name="midLineWidth">
+          <number>0</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="timeLayoutWithIcon">
+         <item>
+          <widget class="QLabel" name="timeIcon">
+           <property name="minimumSize">
+            <size>
+             <width>40</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>40</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: #FC9D45;
+border-radius: 10px;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="widget_4" native="true">
+           <layout class="QVBoxLayout" name="verticalLayout_2">
+            <item>
+             <widget class="QLabel" name="habitTimeSubtitleLabel">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>16</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">color: gray;</string>
+              </property>
+              <property name="text">
+               <string>Horario</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="habitTimeLabel">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Hora de inicio y fin del Hábito</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="frequencyLayoutWithIcon">
+         <item>
+          <widget class="QLabel" name="frequencyIcon">
+           <property name="minimumSize">
+            <size>
+             <width>40</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>40</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: #FC9D45; 
+border-radius: 10px;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="widget_3" native="true">
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="QLabel" name="habitFrequencySubtitleLabel">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>16</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">color: gray;</string>
+              </property>
+              <property name="text">
+               <string>Frecuencia</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="habitFrequencyLabel">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Frecuencia del Hábito</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="descriptionLayoutWithIcon">
+         <item>
+          <widget class="QLabel" name="descriptionIcon">
+           <property name="minimumSize">
+            <size>
+             <width>40</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>40</width>
+             <height>40</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: #FC9D45; 
+border-radius: 10px;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="widget_2" native="true">
+           <layout class="QVBoxLayout" name="verticalLayout">
+            <item>
+             <widget class="QLabel" name="habitDescriptionSubtitleLabel">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>15</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>15</height>
+               </size>
+              </property>
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">color: gray;</string>
+              </property>
+              <property name="text">
+               <string>Descripción</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="habitDescriptionLabel">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Detalles del Hábito</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Fixed</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>150</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QWidget" name="widget_6" native="true">
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QPushButton" name="updateHabitButton">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>50</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>Klasik</family>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">border: none;
+color: #fff;
+background-color: rgb(85, 94, 209);
+border-radius: 6px;</string>
+            </property>
+            <property name="text">
+             <string>Actualizar</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="deleteHabitButton">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>50</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <family>Klasik</family>
+              <pointsize>12</pointsize>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">border: none;
+color: #fff;
+background-color: rgb(254, 69, 53);
+border-radius: 6px;</string>
+            </property>
+            <property name="text">
+             <string>Eliminar</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources>
+  <include location="bg.qrc"/>
+ </resources>
+ <connections/>
+</ui>
+
+
+--- login.ui ---
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LoginUI</class>
+ <widget class="QWidget" name="LoginUI">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1080</width>
+    <height>607</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1080</width>
+    <height>607</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1080</width>
+    <height>607</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Iniciar Sesión</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget#LoginUI{
+	border-image: url(:/images/bg.png);
+}</string>
+  </property>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>-30</y>
+     <width>581</width>
+     <height>651</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="bg.qrc">:/images/acBg.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QWidget" name="widget" native="true">
+   <property name="geometry">
+    <rect>
+     <x>690</x>
+     <y>0</y>
+     <width>391</width>
+     <height>611</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color:#FC9D45;</string>
+   </property>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>50</y>
+      <width>101</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap resource="bg.qrc">:/images/Union.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QWidget" name="widget_2" native="true">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>160</y>
+      <width>281</width>
+      <height>121</height>
+     </rect>
+    </property>
+    <widget class="QLabel" name="label_3">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>9</y>
+       <width>91</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #fff;</string>
+     </property>
+     <property name="text">
+      <string>Escala</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_4">
+     <property name="geometry">
+      <rect>
+       <x>110</x>
+       <y>10</y>
+       <width>63</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #573353;</string>
+     </property>
+     <property name="text">
+      <string>cada</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_5">
+     <property name="geometry">
+      <rect>
+       <x>180</x>
+       <y>10</y>
+       <width>90</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #fff;</string>
+     </property>
+     <property name="text">
+      <string>Habito</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_6">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>40</y>
+       <width>171</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #573353;</string>
+     </property>
+     <property name="text">
+      <string>Y llega a la</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_7">
+     <property name="geometry">
+      <rect>
+       <x>190</x>
+       <y>40</y>
+       <width>63</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #fff;</string>
+     </property>
+     <property name="text">
+      <string>Meta</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_8">
+     <property name="geometry">
+      <rect>
+       <x>40</x>
+       <y>70</y>
+       <width>88</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #573353;</string>
+     </property>
+     <property name="text">
+      <string>que te</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_9">
+     <property name="geometry">
+      <rect>
+       <x>140</x>
+       <y>70</y>
+       <width>91</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #fff;</string>
+     </property>
+     <property name="text">
+      <string>espera</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QLineEdit" name="emailInput">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>300</y>
+      <width>321</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>321</width>
+      <height>0</height>
+     </size>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QLineEdit{
+	border: none;
+	background-color: rgb(255, 255, 255);
+	border-radius: 5px;
+	padding-left: 5px;
+}</string>
+    </property>
+    <property name="placeholderText">
+     <string>Email</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="passwordInput">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>360</y>
+      <width>321</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>321</width>
+      <height>0</height>
+     </size>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QLineEdit{
+	border: none;
+	background-color: rgb(255, 255, 255);
+	border-radius: 5px;
+	padding-left: 5px;
+}</string>
+    </property>
+    <property name="echoMode">
+     <enum>QLineEdit::Password</enum>
+    </property>
+    <property name="placeholderText">
+     <string>Contraseña</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="loginButton">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>430</y>
+      <width>151</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Klasik</family>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+	border: none;
+	background-color: #573353;
+	color: #fff;
+	border-radius: 10px;
+}</string>
+    </property>
+    <property name="text">
+     <string>Log in</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="registerLabel">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>490</y>
+      <width>160</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>No tienes una cuenta? &lt;a href='#'&gt;Registrate&lt;/a&gt;</string>
+    </property>
+    <property name="textFormat">
+     <enum>Qt::RichText</enum>
+    </property>
+    <property name="openExternalLinks">
+     <bool>false</bool>
+    </property>
+    <property name="textInteractionFlags">
+     <set>Qt::TextBrowserInteraction</set>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QWidget" name="widget_3" native="true">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>601</width>
+     <height>201</height>
+    </rect>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLabel" name="label_10">
+      <property name="font">
+       <font>
+        <family>Klasik</family>
+        <pointsize>60</pointsize>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: #573353;</string>
+      </property>
+      <property name="text">
+       <string>Monumental</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="label_11">
+      <property name="font">
+       <font>
+        <family>Klasik</family>
+        <pointsize>60</pointsize>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: #573353;</string>
+      </property>
+      <property name="text">
+       <string>Habits</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources>
+  <include location="bg.qrc"/>
+ </resources>
+ <connections/>
+</ui>
+
+
+--- register.ui ---
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RegisterUI</class>
+ <widget class="QWidget" name="RegisterUI">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1080</width>
+    <height>607</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1080</width>
+    <height>607</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Registrarse</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget#RegisterUI{
+	border-image: url(:/images/bg.png);
+}</string>
+  </property>
+  <widget class="QLabel" name="label">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>-30</y>
+     <width>581</width>
+     <height>651</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="bg.qrc">:/images/acBg.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QWidget" name="widget" native="true">
+   <property name="geometry">
+    <rect>
+     <x>690</x>
+     <y>0</y>
+     <width>391</width>
+     <height>611</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color:#FC9D45;</string>
+   </property>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>50</y>
+      <width>101</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap resource="bg.qrc">:/images/Union.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QWidget" name="widget_2" native="true">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>160</y>
+      <width>301</width>
+      <height>121</height>
+     </rect>
+    </property>
+    <widget class="QLabel" name="label_4">
+     <property name="geometry">
+      <rect>
+       <x>50</x>
+       <y>10</y>
+       <width>201</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #573353;</string>
+     </property>
+     <property name="text">
+      <string>Construyendo</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_5">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>40</y>
+       <width>121</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #fff;</string>
+     </property>
+     <property name="text">
+      <string>Habitos</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_6">
+     <property name="geometry">
+      <rect>
+       <x>120</x>
+       <y>40</y>
+       <width>41</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #573353;</string>
+     </property>
+     <property name="text">
+      <string>un</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_7">
+     <property name="geometry">
+      <rect>
+       <x>160</x>
+       <y>40</y>
+       <width>63</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #fff;</string>
+     </property>
+     <property name="text">
+      <string>Paso</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_8">
+     <property name="geometry">
+      <rect>
+       <x>230</x>
+       <y>40</y>
+       <width>61</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #573353;</string>
+     </property>
+     <property name="text">
+      <string>A la</string>
+     </property>
+    </widget>
+    <widget class="QLabel" name="label_9">
+     <property name="geometry">
+      <rect>
+       <x>130</x>
+       <y>70</y>
+       <width>51</width>
+       <height>27</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>Klasik</family>
+       <pointsize>20</pointsize>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #573353;</string>
+     </property>
+     <property name="text">
+      <string>Vez</string>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QLineEdit" name="nameInput">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>300</y>
+      <width>321</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>321</width>
+      <height>0</height>
+     </size>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QLineEdit{
+	border: none;
+	background-color: rgb(255, 255, 255);
+	border-radius: 5px;
+	padding-left: 5px;
+}</string>
+    </property>
+    <property name="placeholderText">
+     <string>Nombre</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="emailInput">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>360</y>
+      <width>321</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>321</width>
+      <height>0</height>
+     </size>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QLineEdit{
+	border: none;
+	background-color: rgb(255, 255, 255);
+	border-radius: 5px;
+	padding-left: 5px;
+}</string>
+    </property>
+    <property name="placeholderText">
+     <string>Email</string>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="passwordInput">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>420</y>
+      <width>321</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>321</width>
+      <height>0</height>
+     </size>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QLineEdit{
+	border: none;
+	background-color: rgb(255, 255, 255);
+	border-radius: 5px;
+	padding-left: 5px;
+}</string>
+    </property>
+    <property name="echoMode">
+     <enum>QLineEdit::Password</enum>
+    </property>
+    <property name="placeholderText">
+     <string>Contraseña</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="registerButton">
+    <property name="geometry">
+     <rect>
+      <x>130</x>
+      <y>480</y>
+      <width>151</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Klasik</family>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton{
+	border: none;
+	background-color: #573353;
+	color: #fff;
+	border-radius: 10px;
+}</string>
+    </property>
+    <property name="text">
+     <string>Sign In</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QWidget" name="widget_3" native="true">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>601</width>
+     <height>201</height>
+    </rect>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLabel" name="label_10">
+      <property name="font">
+       <font>
+        <family>Klasik</family>
+        <pointsize>60</pointsize>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: #573353;</string>
+      </property>
+      <property name="text">
+       <string>Monumental</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="label_11">
+      <property name="font">
+       <font>
+        <family>Klasik</family>
+        <pointsize>60</pointsize>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: #573353;</string>
+      </property>
+      <property name="text">
+       <string>Habits</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources>
+  <include location="bg.qrc"/>
+ </resources>
+ <connections/>
+</ui>
+
+
+--- splash_screen.ui ---
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SplashScreen</class>
+ <widget class="QMainWindow" name="SplashScreen">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1080</width>
+    <height>607</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1080</width>
+    <height>607</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1080</width>
+    <height>607</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Mountain Habits</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow{
+	border-image: url(:/images/bg.png);
+}</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <property name="baseSize">
+    <size>
+     <width>1080</width>
+     <height>600</height>
+    </size>
+   </property>
+   <property name="autoFillBackground">
+    <bool>false</bool>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+   <widget class="QWidget" name="widget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>530</y>
+      <width>1081</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="2">
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>227</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="0">
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>228</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="1">
+      <widget class="QProgressBar" name="progressBar">
+       <property name="minimumSize">
+        <size>
+         <width>590</width>
+         <height>16</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>16</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QProgressBar{
+	background-color: #F4F4F4;
+	border-style: none;
+	text-align: center;
+	border-radius: 8px;
+	color: transparent;
+}
+
+QProgressBar::chunk{
+	border-radius: 8px;
+	background-color: #FC9D45;
+}</string>
+       </property>
+       <property name="value">
+        <number>0</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>580</y>
+      <width>121</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Klasik</family>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: #573353;</string>
+    </property>
+    <property name="text">
+     <string>DESIGNED BY </string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>130</x>
+      <y>580</y>
+      <width>161</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Klasik</family>
+      <pointsize>14</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: #FC9D45;</string>
+    </property>
+    <property name="text">
+     <string>Reizo Velasquez</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="widget_2" native="true">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>570</y>
+      <width>400</width>
+      <height>37</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="3">
+      <widget class="QLabel" name="label_6">
+       <property name="font">
+        <font>
+         <family>Klasik</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #FC9D45;</string>
+       </property>
+       <property name="text">
+        <string>paso</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="label_4">
+       <property name="font">
+        <font>
+         <family>Klasik</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #FC9D45;</string>
+       </property>
+       <property name="text">
+        <string>Habitos</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="label_5">
+       <property name="font">
+        <font>
+         <family>Klasik</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #573353;</string>
+       </property>
+       <property name="text">
+        <string>un</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="4">
+      <widget class="QLabel" name="label_7">
+       <property name="font">
+        <font>
+         <family>Klasik</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #573353;</string>
+       </property>
+       <property name="text">
+        <string>a la vez</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="font">
+        <font>
+         <family>Klasik</family>
+         <pointsize>14</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #573353;</string>
+       </property>
+       <property name="text">
+        <string>Construyendo</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QLabel" name="label_8">
+    <property name="geometry">
+     <rect>
+      <x>900</x>
+      <y>30</y>
+      <width>150</width>
+      <height>150</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>150</width>
+      <height>150</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>150</width>
+      <height>150</height>
+     </size>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap resource="bg.qrc">:/images/Union.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QWidget" name="widget_3" native="true">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>30</y>
+      <width>601</width>
+      <height>201</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QLabel" name="label_9">
+       <property name="font">
+        <font>
+         <family>Klasik</family>
+         <pointsize>60</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #573353;</string>
+       </property>
+       <property name="text">
+        <string>Monumental</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_10">
+       <property name="font">
+        <font>
+         <family>Klasik</family>
+         <pointsize>60</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #573353;</string>
+       </property>
+       <property name="text">
+        <string>Habits</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+ </widget>
+ <resources>
+  <include location="bg.qrc"/>
+ </resources>
+ <connections/>
+</ui>
+
+
+====UI\images====
+
+--- acBg.png (imagen) ---
+
+--- bg-sidebar.png (imagen) ---
+
+--- bg.png (imagen) ---
+
+--- Union.png (imagen) ---
+
+====view====
+
+--- edit_habit_dialog.py ---
+from PyQt5 import QtWidgets, uic
+
+class EditHabitDialogUI(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super(EditHabitDialogUI, self).__init__(parent)
+        uic.loadUi('UI/edit_habit_dialog.ui', self)
+
+
+--- habit_manager.py ---
+from PyQt5 import QtWidgets, uic
+
+class HabitManagerUI(QtWidgets.QMainWindow):
+    def __init__(self, parent=None):
+        super(HabitManagerUI, self).__init__(parent)
+        uic.loadUi('UI/habit_manager.ui', self)
+
+
+--- login_ui.py ---
+from PyQt5 import QtWidgets, uic
+
+class LoginUI(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super(LoginUI, self).__init__(parent)
+        uic.loadUi('UI/login.ui', self)
+
+
+--- register_ui.py ---
+from PyQt5 import QtWidgets, uic
+
+class RegisterUI(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super(RegisterUI, self).__init__(parent)
+        uic.loadUi('UI/register.ui', self)
+
+
+--- splash_screen.py ---
+from PyQt5 import QtWidgets, uic
+
+class SplashScreenUI(QtWidgets.QMainWindow):
+    def __init__(self, parent=None):
+        super(SplashScreenUI, self).__init__(parent)
+        uic.loadUi('UI/splash_screen.ui', self)
+
+

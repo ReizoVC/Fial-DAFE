@@ -33,6 +33,12 @@
     <property name="leftMargin">
      <number>0</number>
     </property>
+    <property name="rightMargin">
+     <number>9</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
      <widget class="QWidget" name="leftSidebarLayout" native="true">
       <property name="minimumSize">
@@ -42,6 +48,21 @@
        </size>
       </property>
       <layout class="QVBoxLayout" name="leftSidebarLayou">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>1</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QWidget" name="background" native="true">
          <property name="minimumSize">
@@ -266,6 +287,13 @@ border-radius: 15px;</string>
     </item>
     <item>
      <widget class="QWidget" name="rightSidebarContainer" native="true">
+      <property name="styleSheet">
+       <string notr="true">QWidget#rightSidebarContainer {
+    background-color: white;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+}
+</string>
+      </property>
       <layout class="QVBoxLayout" name="rightLayout">
        <item>
         <widget class="QLabel" name="habitTitleLabel">

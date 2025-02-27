@@ -1,4 +1,6 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt5.QtGui import QColor
 from view.splash_screen import SplashScreenUI
 from view.habit_manager import HabitManagerUI
 from controllers.edit_habit_dialog import EditHabitDialog
@@ -43,25 +45,40 @@ class SplashScreenApp(SplashScreenUI):
                     self.main.show()
             self.close()
 
+    
 class HabitManagerApp(HabitManagerUI):
     def __init__(self, user):
         super().__init__()
         self.manager = HabitManager()
         self.user = user
+
         self.addHabitButton.clicked.connect(self.open_add_habit_dialog)
         self.updateHabitButton.clicked.connect(self.open_edit_habit_dialog)
         self.deleteHabitButton.clicked.connect(self.confirm_delete_habit)
         self.logoutButton.clicked.connect(self.logout)
         self.habitListWidget.itemClicked.connect(self.display_habit_details)
+
         self.update_habit_list()
         self.habitListWidget.viewport().installEventFilter(self)
+
         self.userLabel.setText(self.user.nombre)
+
         self.rightLayoutWidget = self.findChild(QtWidgets.QWidget, "rightSidebarContainer")
         if self.rightLayoutWidget:
-            self.rightLayoutWidget.setVisible(False) 
+            self.rightLayoutWidget.setVisible(False)
+            self.apply_shadow_effect(self.rightLayoutWidget)
 
+        
+    
+    def apply_shadow_effect(self, widget):
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(30)
+        shadow.setXOffset(-3)
+        shadow.setYOffset(0)
+        shadow.setColor(QColor(0, 0, 0, 100))  # Color negro con opacidad
+        widget.setGraphicsEffect(shadow)
 
-
+    
 
     def open_add_habit_dialog(self):
         dialog = EditHabitDialog(parent=self)
@@ -74,13 +91,29 @@ class HabitManagerApp(HabitManagerUI):
     def open_edit_habit_dialog(self):
         habit_name = self.habitTitleLabel.text()
         habit = next((habit for habit in self.manager.habits if habit.nombre == habit_name), None)
+
         if habit:
             dialog = EditHabitDialog(habit, self)
             if dialog.exec_() == QtWidgets.QDialog.Accepted:
                 nombre, descripcion, frecuencia, hora_inicio, hora_fin = dialog.get_habit_data()
+
+                # Actualizar en la base de datos
                 self.manager.update_habit(habit.id_habito, habit.id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin)
+                
+                # Refrescar la lista de hábitos en la UI
                 self.update_habit_list()
-                self.display_habit_details(self.habitListWidget.findItems(nombre, QtCore.Qt.MatchExactly)[0])
+
+                # Esperar brevemente para que la UI se actualice completamente
+                QtWidgets.QApplication.processEvents()
+
+                # Buscar el hábito en la lista actualizada
+                items = self.habitListWidget.findItems(nombre, QtCore.Qt.MatchExactly)
+
+                if items:  # Si el hábito fue encontrado en la UI, mostrarlo
+                    self.display_habit_details(items[0])
+                else:
+                    print(f"⚠️ No se encontró el hábito '{nombre}' en la lista después de actualizar.")
+
 
     def confirm_delete_habit(self):
         habit_name = self.habitTitleLabel.text()  # Usar habitTitleLabel en lugar de habitDetailsLabel

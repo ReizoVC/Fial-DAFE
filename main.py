@@ -17,7 +17,8 @@ def main():
 
     # Iniciar el hilo para verificar notificaciones
     manager = splash.manager
-    notification_thread = threading.Thread(target=check_notifications, args=(manager,))
+    print("🟢 Iniciando hilo de notificaciones...")
+    notification_thread = threading.Thread(target=manager.check_and_send_notifications)
     notification_thread.daemon = True
     notification_thread.start()
 

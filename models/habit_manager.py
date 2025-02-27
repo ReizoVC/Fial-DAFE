@@ -1,11 +1,14 @@
 import json
+import time
+import threading
+from datetime import datetime
+from supabase import create_client, Client
+from plyer import notification
 from models.habit import Habit
 from models.usuario import Usuario
 from models.recordatorio import Recordatorio
-from supabase import create_client, Client
 from config import SUPABASE_URL, SUPABASE_KEY
-from datetime import datetime, timedelta
-from plyer import notification
+import pytz
 
 class HabitManager:
     def __init__(self):
@@ -15,7 +18,7 @@ class HabitManager:
         self.current_user = None
 
     def add_habit(self, id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin):
-        frecuencia_numerica = ''.join(str(day) for day in frecuencia)
+        frecuencia_numerica = ''.join(map(str, frecuencia))
         data = {
             "id_usuario": id_usuario,
             "nombre": nombre,
@@ -30,29 +33,20 @@ class HabitManager:
         self.create_reminders(habit)
 
     def create_reminders(self, habit):
-        self.add_reminder(habit.id_usuario, habit.id_habito, f"Recuerda realizar el hábito: {habit.nombre}", 'inicio')
-        self.add_reminder(habit.id_usuario, habit.id_habito, f"¿Has completado el hábito: {habit.nombre}?", 'fin')
+        reminders = [
+            (habit.id_usuario, habit.id_habito, f"Recuerda realizar el hábito: {habit.nombre}", 'inicio'),
+            (habit.id_usuario, habit.id_habito, f"¿Has completado el hábito: {habit.nombre}?", 'fin')
+        ]
+        for reminder in reminders:
+            self.add_reminder(*reminder)
 
     def add_reminder(self, id_usuario, id_habito, mensaje, tipo):
-        data = {
-            "id_usuario": id_usuario,
-            "id_habito": id_habito,
-            "mensaje": mensaje,
-            "tipo": tipo
-        }
+        data = {"id_usuario": id_usuario, "id_habito": id_habito, "mensaje": mensaje, "tipo": tipo}
         response = self.supabase.table('recordatorios').insert(data).execute()
-        reminder_data = response.data[0]
-        reminder = Recordatorio(
-            id_recordatorio=reminder_data['id_recordatorio'],
-            id_usuario=reminder_data['id_usuario'],
-            id_habito=reminder_data['id_habito'],
-            mensaje=reminder_data['mensaje'],
-            tipo=reminder_data['tipo']
-        )
-        # Aquí podrías agregar el recordatorio a una lista si es necesario
+        return Recordatorio(**response.data[0])
 
     def update_habit(self, id_habito, id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin):
-        frecuencia_numerica = ''.join(str(day) for day in frecuencia)
+        frecuencia_numerica = ''.join(map(str, frecuencia))
         data = {
             "id_usuario": id_usuario,
             "nombre": nombre,
@@ -61,7 +55,15 @@ class HabitManager:
             "hora_inicio": hora_inicio,
             "hora_fin": hora_fin
         }
-        self.supabase.table('habitos').update(data).eq('id_habito', id_habito).execute()
+
+        # Intentar actualizar en la base de datos
+        response = self.supabase.table('habitos').update(data).eq('id_habito', id_habito).execute()
+        
+        if not response.data:
+            print(f"⚠️ Error al actualizar el hábito con ID {id_habito}")
+            return False  # Indica que la actualización falló
+
+        # Buscar y actualizar el hábito en la lista local
         for habit in self.habits:
             if habit.id_habito == id_habito:
                 habit.nombre = nombre
@@ -69,9 +71,14 @@ class HabitManager:
                 habit.frecuencia = frecuencia_numerica
                 habit.hora_inicio = hora_inicio
                 habit.hora_fin = hora_fin
-                break
+                break  # No necesitamos seguir buscando
+
+        # Actualizar recordatorios
         self.delete_reminders(id_habito)
-        self.create_reminders(habit)
+        self.create_reminders(Habit(id_habito, id_usuario, nombre, descripcion, frecuencia_numerica, hora_inicio, hora_fin))
+
+        return True  # Indica que la actualización fue exitosa
+
 
     def delete_reminders(self, id_habito):
         self.supabase.table('recordatorios').delete().eq('id_habito', id_habito).execute()
@@ -84,33 +91,26 @@ class HabitManager:
     def show_habits(self, id_usuario):
         response = self.supabase.table('habitos').select('*').eq('id_usuario', id_usuario).execute()
         self.habits = [Habit(**habit) for habit in response.data]
-        for habit in self.habits:
-            habit.frecuencia = self.convert_frecuencia_to_days(habit.frecuencia)
+
+    def get_reminders(self, id_usuario):
+        response = self.supabase.table('recordatorios').select('*').eq('id_usuario', id_usuario).execute()
+
+        for reminder in response.data:
+            reminder["hora_inicio"] = reminder["hora_inicio"][:5]  # Obtener solo HH:MM
+            reminder["hora_fin"] = reminder["hora_fin"][:5]  # Obtener solo HH:MM
+
+        return response.data if response.data else []
+
 
     def convert_frecuencia_to_days(self, frecuencia):
         days_map = {
-            '1': 'Lunes',
-            '2': 'Martes',
-            '3': 'Miércoles',
-            '4': 'Jueves',
-            '5': 'Viernes',
-            '6': 'Sábado',
-            '7': 'Domingo'
+            '1': 'Lunes', '2': 'Martes', '3': 'Miércoles',
+            '4': 'Jueves', '5': 'Viernes', '6': 'Sábado', '7': 'Domingo'
         }
-        
-        # Si la frecuencia ya es una lista de días, devolverla directamente
-        if isinstance(frecuencia, list):
-            return frecuencia
-        
-        # Si la frecuencia es una cadena numérica, convertirla
-        return [days_map[day] for day in frecuencia if day in days_map]
-    
+        return [days_map[day] for day in str(frecuencia) if day in days_map]
+
     def add_user(self, nombre, email, contraseña):
-        data = {
-            "nombre": nombre,
-            "email": email,
-            "contraseña": contraseña
-        }
+        data = {"nombre": nombre, "email": email, "contraseña": contraseña}
         response = self.supabase.table('usuarios').insert(data).execute()
         user = Usuario(**response.data[0])
         self.users.append(user)
@@ -120,7 +120,7 @@ class HabitManager:
         self.users = [Usuario(**user) for user in response.data]
 
     def authenticate_user(self, email, password):
-        response = self.supabase.table('usuarios').select('*').eq('email', email).eq('contraseña', password).execute()
+        response = self.supabase.table('usuarios').select('id_usuario, nombre, email, contraseña').eq('email', email).eq('contraseña', password).execute()
         if response.data:
             self.current_user = Usuario(**response.data[0])
             self.save_session()
@@ -148,9 +148,30 @@ class HabitManager:
             json.dump({}, f)
 
     def check_and_send_notifications(self):
-        # Aquí deberías implementar la lógica para verificar y enviar notificaciones
-        # según el tipo de recordatorio y la hora actual.
-        pass
+        """Verifica y envía notificaciones si es la hora correcta."""
+        if not self.current_user:
+            return
+
+        zona_local = pytz.timezone("America/Lima")  
+        while True:
+            now_utc = datetime.now(pytz.utc)  # Hora actual en UTC
+            now_local = now_utc.astimezone(zona_local)  # Convertir a hora local
+            hora_actual = now_local.strftime("%H:%M")  # Obtener solo HH:MM
+
+            reminders = self.get_reminders(self.current_user.id_usuario)
+
+            for reminder in reminders:
+                habit = next((h for h in self.habits if h.id_habito == reminder['id_habito']), None)
+                if habit:
+                    hora_inicio = datetime.strptime(habit.hora_inicio, "%H:%M").time()
+                    hora_fin = datetime.strptime(habit.hora_fin, "%H:%M").time()
+
+                    # Comparar con la hora actual
+                    if (reminder['tipo'] == "inicio" and hora_actual == habit.hora_inicio) or \
+                    (reminder['tipo'] == "fin" and hora_actual == habit.hora_fin):
+                        self.send_notification(reminder['mensaje'])
+
+            time.sleep(60)
 
     def send_notification(self, message):
         notification.notify(
