@@ -6,8 +6,10 @@ from view.habit_manager import HabitManagerUI
 from controllers.edit_habit_dialog import EditHabitDialog
 from models.habit_manager import HabitManager
 from .login import LoginApp
-import UI.bg_rc  # Importar el archivo de recursos compilado
+import UI.bg_rc
 from PyQt5.QtWidgets import QListWidgetItem, QWidget, QGridLayout, QLabel, QSpacerItem, QSizePolicy
+import threading
+from datetime import datetime, time, timedelta
 
 class SplashScreenApp(SplashScreenUI):
     def __init__(self, parent=None):
@@ -17,9 +19,8 @@ class SplashScreenApp(SplashScreenUI):
         self.timer.start(30)
         self.counter = 0
         self.add_shadow_to_progress_bar()
-        self.manager = HabitManager()  # Inicializar el atributo manager
+        self.manager = HabitManager()
         self.show()
-
 
     def add_shadow_to_progress_bar(self):
         shadow = QtWidgets.QGraphicsDropShadowEffect(self)
@@ -45,18 +46,20 @@ class SplashScreenApp(SplashScreenUI):
                     self.main.show()
             self.close()
 
-    
 class HabitManagerApp(HabitManagerUI):
     def __init__(self, user):
         super().__init__()
         self.manager = HabitManager()
         self.user = user
+        self.manager.current_user = user
+        self.complete_button_clicked = False
 
         self.addHabitButton.clicked.connect(self.open_add_habit_dialog)
         self.updateHabitButton.clicked.connect(self.open_edit_habit_dialog)
         self.deleteHabitButton.clicked.connect(self.confirm_delete_habit)
         self.logoutButton.clicked.connect(self.logout)
         self.habitListWidget.itemClicked.connect(self.display_habit_details)
+        self.completeHabitButton.clicked.connect(self.complete_habit)
 
         self.update_habit_list()
         self.habitListWidget.viewport().installEventFilter(self)
@@ -68,22 +71,22 @@ class HabitManagerApp(HabitManagerUI):
             self.rightLayoutWidget.setVisible(False)
             self.apply_shadow_effect(self.rightLayoutWidget)
 
-        
-    
+        notification_thread = threading.Thread(target=self.manager.check_and_send_notifications)
+        notification_thread.daemon = True
+        notification_thread.start()
+
     def apply_shadow_effect(self, widget):
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(30)
         shadow.setXOffset(-3)
         shadow.setYOffset(0)
-        shadow.setColor(QColor(0, 0, 0, 100))  # Color negro con opacidad
+        shadow.setColor(QColor(0, 0, 0, 100))
         widget.setGraphicsEffect(shadow)
-
-    
 
     def open_add_habit_dialog(self):
         dialog = EditHabitDialog(parent=self)
         if dialog.exec_() == QtWidgets.QDialog.Accepted:
-            id_usuario = self.user.id_usuario  # Asegurarse de usar el ID del usuario en sesión actual
+            id_usuario = self.user.id_usuario
             nombre, descripcion, frecuencia, hora_inicio, hora_fin = dialog.get_habit_data()
             self.manager.add_habit(id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin)
             self.update_habit_list()
@@ -96,27 +99,17 @@ class HabitManagerApp(HabitManagerUI):
             dialog = EditHabitDialog(habit, self)
             if dialog.exec_() == QtWidgets.QDialog.Accepted:
                 nombre, descripcion, frecuencia, hora_inicio, hora_fin = dialog.get_habit_data()
-
-                # Actualizar en la base de datos
                 self.manager.update_habit(habit.id_habito, habit.id_usuario, nombre, descripcion, frecuencia, hora_inicio, hora_fin)
-                
-                # Refrescar la lista de hábitos en la UI
                 self.update_habit_list()
-
-                # Esperar brevemente para que la UI se actualice completamente
                 QtWidgets.QApplication.processEvents()
-
-                # Buscar el hábito en la lista actualizada
                 items = self.habitListWidget.findItems(nombre, QtCore.Qt.MatchExactly)
-
-                if items:  # Si el hábito fue encontrado en la UI, mostrarlo
+                if items:
                     self.display_habit_details(items[0])
                 else:
                     print(f"⚠️ No se encontró el hábito '{nombre}' en la lista después de actualizar.")
 
-
     def confirm_delete_habit(self):
-        habit_name = self.habitTitleLabel.text()  # Usar habitTitleLabel en lugar de habitDetailsLabel
+        habit_name = self.habitTitleLabel.text()
         habit = next((habit for habit in self.manager.habits if habit.nombre == habit_name), None)
         if habit:
             reply = QtWidgets.QMessageBox.question(self, 'Confirmar Eliminación', f"¿Estás seguro de que deseas eliminar el hábito '{habit.nombre}'?", QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
@@ -124,7 +117,7 @@ class HabitManagerApp(HabitManagerUI):
                 self.manager.delete_habit(habit.id_habito)
                 self.update_habit_list()
                 if self.rightLayoutWidget:
-                    self.rightLayoutWidget.setVisible(False)  # Ocultar el widget que contiene la barra lateral derecha después de eliminar un hábito
+                    self.rightLayoutWidget.setVisible(False)
 
     def update_habit_list(self):
         self.habitListWidget.clear()
@@ -163,8 +156,7 @@ class HabitManagerApp(HabitManagerUI):
             print("Error: No se encontró el widget del item seleccionado.")
             return
 
-        labels = widget.findChildren(QLabel)  # Buscar todos los QLabel dentro del widget
-        print("Labels encontrados:", [label.text() for label in labels])
+        labels = widget.findChildren(QLabel)
 
         habit_label = next((label for label in labels if label.text().strip()), None)
         if habit_label is None:
@@ -172,38 +164,61 @@ class HabitManagerApp(HabitManagerUI):
             return
 
         habit_name = habit_label.text().strip()
-        print(f"Clicked on habit: {habit_name}")
-        print("Lista de hábitos disponibles:", [habit.nombre for habit in self.manager.habits])
 
         habit = next((habit for habit in self.manager.habits if habit.nombre == habit_name), None)
         if habit is None:
             print("Error: No se encontró el hábito en la lista.")
             return
 
-        print(f"Frecuencia en base de datos: {habit.frecuencia}")
-
         frecuencia = ', '.join(self.manager.convert_frecuencia_to_days(habit.frecuencia))
-        print(f"Frecuencia convertida: {frecuencia}")
 
         self.habitTitleLabel.setText(habit.nombre)
         self.habitDescriptionLabel.setText(habit.descripcion)
-        self.habitFrequencyLabel.setText(frecuencia)  # Verifica que aquí se asigna correctamente
-        self.habitTimeLabel.setText(f"{habit.hora_inicio} - {habit.hora_fin}")
-        self.streakDaysLabel.setText("15 días")
+        self.habitFrequencyLabel.setText(frecuencia)
+        self.habitTimeLabel.setText(f"{habit.hora_inicio[:5]} - {habit.hora_fin[:5]}")
+        self.streakDaysLabel.setText(f"{self.manager.get_streak(habit.id_habito)} días")
+
+        now = datetime.now().time()
+        hora_inicio = datetime.strptime(habit.hora_inicio[:5], "%H:%M").time()
+        hora_fin = datetime.strptime(habit.hora_fin[:5], "%H:%M").time()
+        if hora_inicio <= now <= hora_fin and not self.complete_button_clicked:
+            self.completeHabitButton.setVisible(True)
+        else:
+            self.completeHabitButton.setVisible(False)
 
         if self.rightLayoutWidget:
             self.rightLayoutWidget.setVisible(True)
-            print("Sidebar mostrado")
 
+    def complete_habit(self):
+        habit_name = self.habitTitleLabel.text()
+        habit = next((habit for habit in self.manager.habits if habit.nombre == habit_name), None)
+        if habit:
+            self.manager.increment_streak(habit.id_habito)
+            self.update_habit_list()
+            current_item = self.habitListWidget.currentItem()
+            if current_item:
+                self.display_habit_details(current_item)
+            self.complete_button_clicked = True
+            self.completeHabitButton.setVisible(False)
+            self.schedule_button_visibility_reset(habit.hora_inicio)
 
+    def schedule_button_visibility_reset(self, hora_inicio):
+        now = datetime.now()
+        hora_inicio_datetime = datetime.combine(now.date(), datetime.strptime(hora_inicio[:5], "%H:%M").time())
+        if now > hora_inicio_datetime:
+            hora_inicio_datetime = datetime.combine(now.date() + timedelta(days=1), hora_inicio_datetime.time())
+        delay = (hora_inicio_datetime - now).total_seconds()
+        QtCore.QTimer.singleShot(int(delay * 1000), self.reset_button_visibility)
 
-
+    def reset_button_visibility(self):
+        self.complete_button_clicked = False
+        self.completeHabitButton.setVisible(True)
 
     def eventFilter(self, source, event):
         if event.type() == QtCore.QEvent.MouseButtonPress and source is self.habitListWidget.viewport():
             item = self.habitListWidget.itemAt(event.pos())
             if item is None and self.rightLayoutWidget:
-                self.rightLayoutWidget.setVisible(False)  # Ocultar el widget que contiene la barra lateral derecha si se hace clic fuera de un hábito
+                self.rightLayoutWidget.setVisible(False)
         return super().eventFilter(source, event)
 
     def logout(self):

@@ -1,12 +1,13 @@
 import json
-import time
+import time as time_module
 import threading
-from datetime import datetime
+from datetime import datetime, time
 from supabase import create_client, Client
 from plyer import notification
 from models.habit import Habit
 from models.usuario import Usuario
 from models.recordatorio import Recordatorio
+from models.progreso import Progreso
 from config import SUPABASE_URL, SUPABASE_KEY
 import pytz
 
@@ -56,14 +57,12 @@ class HabitManager:
             "hora_fin": hora_fin
         }
 
-        # Intentar actualizar en la base de datos
         response = self.supabase.table('habitos').update(data).eq('id_habito', id_habito).execute()
         
         if not response.data:
             print(f"⚠️ Error al actualizar el hábito con ID {id_habito}")
-            return False  # Indica que la actualización falló
+            return False
 
-        # Buscar y actualizar el hábito en la lista local
         for habit in self.habits:
             if habit.id_habito == id_habito:
                 habit.nombre = nombre
@@ -71,14 +70,12 @@ class HabitManager:
                 habit.frecuencia = frecuencia_numerica
                 habit.hora_inicio = hora_inicio
                 habit.hora_fin = hora_fin
-                break  # No necesitamos seguir buscando
+                break
 
-        # Actualizar recordatorios
         self.delete_reminders(id_habito)
         self.create_reminders(Habit(id_habito, id_usuario, nombre, descripcion, frecuencia_numerica, hora_inicio, hora_fin))
 
-        return True  # Indica que la actualización fue exitosa
-
+        return True
 
     def delete_reminders(self, id_habito):
         self.supabase.table('recordatorios').delete().eq('id_habito', id_habito).execute()
@@ -96,18 +93,44 @@ class HabitManager:
         response = self.supabase.table('recordatorios').select('*').eq('id_usuario', id_usuario).execute()
 
         for reminder in response.data:
-            reminder["hora_inicio"] = reminder["hora_inicio"][:5]  # Obtener solo HH:MM
-            reminder["hora_fin"] = reminder["hora_fin"][:5]  # Obtener solo HH:MM
+            if "hora_inicio" in reminder:
+                reminder["hora_inicio"] = reminder["hora_inicio"][:5]
+            if "hora_fin" in reminder:
+                reminder["hora_fin"] = reminder["hora_fin"][:5]
 
         return response.data if response.data else []
-
 
     def convert_frecuencia_to_days(self, frecuencia):
         days_map = {
             '1': 'Lunes', '2': 'Martes', '3': 'Miércoles',
             '4': 'Jueves', '5': 'Viernes', '6': 'Sábado', '7': 'Domingo'
         }
-        return [days_map[day] for day in str(frecuencia) if day in days_map]
+        days = [days_map[day] for day in str(frecuencia) if day in days_map]
+        
+        if not days:
+            return []
+
+        ranges = []
+        start = days[0]
+        end = days[0]
+
+        for i in range(1, len(days)):
+            if days_map[str((int(frecuencia[i-1]) % 7) + 1)] == days[i]:
+                end = days[i]
+            else:
+                if start == end:
+                    ranges.append(start)
+                else:
+                    ranges.append(f"{start} - {end}")
+                start = days[i]
+                end = days[i]
+
+        if start == end:
+            ranges.append(start)
+        else:
+            ranges.append(f"{start} - {end}")
+
+        return ranges
 
     def add_user(self, nombre, email, contraseña):
         data = {"nombre": nombre, "email": email, "contraseña": contraseña}
@@ -148,30 +171,36 @@ class HabitManager:
             json.dump({}, f)
 
     def check_and_send_notifications(self):
-        """Verifica y envía notificaciones si es la hora correcta."""
         if not self.current_user:
+            print("[DEBUG] No hay usuario actual.")
             return
 
+        print("[DEBUG] Iniciando verificación de notificaciones...")
         zona_local = pytz.timezone("America/Lima")  
         while True:
-            now_utc = datetime.now(pytz.utc)  # Hora actual en UTC
-            now_local = now_utc.astimezone(zona_local)  # Convertir a hora local
-            hora_actual = now_local.strftime("%H:%M")  # Obtener solo HH:MM
+            now_utc = datetime.now(pytz.utc)
+            now_local = now_utc.astimezone(zona_local)
+            hora_actual = now_local.strftime("%H:%M")
 
+            print(f"[DEBUG] Hora actual: {hora_actual}")
             reminders = self.get_reminders(self.current_user.id_usuario)
 
             for reminder in reminders:
                 habit = next((h for h in self.habits if h.id_habito == reminder['id_habito']), None)
                 if habit:
-                    hora_inicio = datetime.strptime(habit.hora_inicio, "%H:%M").time()
-                    hora_fin = datetime.strptime(habit.hora_fin, "%H:%M").time()
+                    try:
+                        hora_inicio = datetime.strptime(habit.hora_inicio[:5], "%H:%M").strftime("%H:%M")
+                        hora_fin = datetime.strptime(habit.hora_fin[:5], "%H:%M").strftime("%H:%M")
+                        print(f"[DEBUG] Hábito: {habit.nombre}, Hora de inicio: {hora_inicio}, Hora de fin: {hora_fin}")
+                    except ValueError as e:
+                        print(f"Error al convertir la hora: {e}")
+                        continue
 
-                    # Comparar con la hora actual
-                    if (reminder['tipo'] == "inicio" and hora_actual == habit.hora_inicio) or \
-                    (reminder['tipo'] == "fin" and hora_actual == habit.hora_fin):
+                    if (reminder['tipo'] == "inicio" and hora_actual == hora_inicio) or \
+                    (reminder['tipo'] == "fin" and hora_actual == hora_fin):
                         self.send_notification(reminder['mensaje'])
 
-            time.sleep(60)
+            time_module.sleep(60)
 
     def send_notification(self, message):
         notification.notify(
@@ -180,3 +209,20 @@ class HabitManager:
             app_name='Proyecto Habitos',
             timeout=10
         )
+
+    def increment_streak(self, id_habito):
+        response = self.supabase.table('progreso').select('*').eq('id_habito', id_habito).execute()
+        if response.data:
+            progreso = Progreso(**response.data[0])
+            progreso.racha += 1
+            self.supabase.table('progreso').update({"racha": progreso.racha}).eq('id_progreso', progreso.id_progreso).execute()
+        else:
+            data = {"id_habito": id_habito, "racha": 1}
+            self.supabase.table('progreso').insert(data).execute()
+
+    def get_streak(self, id_habito):
+        response = self.supabase.table('progreso').select('*').eq('id_habito', id_habito).execute()
+        if response.data:
+            progreso = Progreso(**response.data[0])
+            return progreso.racha
+        return 0

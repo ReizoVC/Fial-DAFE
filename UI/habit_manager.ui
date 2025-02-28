@@ -95,6 +95,7 @@
           </property>
           <property name="font">
            <font>
+            <family>Manrope SemiBold</family>
             <pointsize>12</pointsize>
             <weight>75</weight>
             <bold>true</bold>
@@ -118,6 +119,7 @@
           </property>
           <property name="font">
            <font>
+            <family>Manrope Medium</family>
             <pointsize>12</pointsize>
            </font>
           </property>
@@ -147,6 +149,7 @@ QPushButton#addHabitButton:hover{
           </property>
           <property name="font">
            <font>
+            <family>Manrope Medium</family>
             <pointsize>12</pointsize>
            </font>
           </property>
@@ -176,6 +179,7 @@ QPushButton#logoutButton:hover{
           </property>
           <property name="font">
            <font>
+            <family>Manrope ExtraBold</family>
             <pointsize>12</pointsize>
             <weight>75</weight>
             <bold>true</bold>
@@ -266,6 +270,12 @@ border-radius: 15px;</string>
       </item>
       <item>
        <widget class="QListWidget" name="habitListWidget">
+        <property name="font">
+         <font>
+          <family>Manrope Medium</family>
+          <pointsize>11</pointsize>
+         </font>
+        </property>
         <property name="styleSheet">
          <string notr="true">border: none;</string>
         </property>
@@ -372,6 +382,7 @@ background-color: rgb(246, 91, 78);</string>
                 </property>
                 <property name="font">
                  <font>
+                  <family>Manrope Medium</family>
                   <pointsize>10</pointsize>
                  </font>
                 </property>
@@ -390,6 +401,7 @@ background-color: rgb(246, 91, 78);</string>
                <widget class="QLabel" name="streakDaysLabel">
                 <property name="font">
                  <font>
+                  <family>Manrope ExtraBold</family>
                   <pointsize>18</pointsize>
                   <weight>75</weight>
                   <bold>true</bold>
@@ -407,6 +419,39 @@ background-color: rgb(246, 91, 78);</string>
                </widget>
               </item>
              </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="completeHabitButton">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>35</height>
+              </size>
+             </property>
+             <property name="font">
+              <font>
+               <family>Manrope Medium</family>
+              </font>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QPushButton#completeHabitButton{
+	border: none;
+	color: #fff;
+	background-color:#573353 ;
+	border-radius: 6px;
+}
+
+QPushButton#completeHabitButton:hover{
+	background-color: #AF5AA6;
+}
+
+
+</string>
+             </property>
+             <property name="text">
+              <string>Completado</string>
+             </property>
             </widget>
            </item>
           </layout>
@@ -490,6 +535,7 @@ border-radius: 10px;</string>
               </property>
               <property name="font">
                <font>
+                <family>Manrope Medium</family>
                 <pointsize>10</pointsize>
                </font>
               </property>
@@ -508,7 +554,10 @@ border-radius: 10px;</string>
              <widget class="QLabel" name="habitTimeLabel">
               <property name="font">
                <font>
+                <family>Manrope ExtraBold</family>
                 <pointsize>10</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
                </font>
               </property>
               <property name="text">
@@ -562,6 +611,7 @@ border-radius: 10px;</string>
               </property>
               <property name="font">
                <font>
+                <family>Manrope Medium</family>
                 <pointsize>10</pointsize>
                </font>
               </property>
@@ -580,7 +630,10 @@ border-radius: 10px;</string>
              <widget class="QLabel" name="habitFrequencyLabel">
               <property name="font">
                <font>
+                <family>Manrope ExtraBold</family>
                 <pointsize>10</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
                </font>
               </property>
               <property name="text">
@@ -634,6 +687,7 @@ border-radius: 10px;</string>
               </property>
               <property name="font">
                <font>
+                <family>Manrope Medium</family>
                 <pointsize>10</pointsize>
                </font>
               </property>
@@ -652,7 +706,10 @@ border-radius: 10px;</string>
              <widget class="QLabel" name="habitDescriptionLabel">
               <property name="font">
                <font>
+                <family>Manrope ExtraBold</family>
                 <pointsize>10</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
                </font>
               </property>
               <property name="text">

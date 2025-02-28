@@ -4,7 +4,7 @@ class Recordatorio:
         self.id_usuario = id_usuario
         self.id_habito = id_habito
         self.mensaje = mensaje
-        self.tipo = tipo  # 'inicio' o 'fin'
+        self.tipo = tipo
 
     def __str__(self):
         return f"Recordatorio: Usuario ID {self.id_usuario}, Hábito ID {self.id_habito}, Mensaje: {self.mensaje}, Tipo: {self.tipo}"
