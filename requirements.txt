@@ -20,6 +20,7 @@ idna==3.10
 multidict==6.1.0
 packaging==24.2
 pillow==11.1.0
+plyer==2.1.0
 postgrest==0.19.3
 propcache==0.2.1
 pydantic==2.10.6
@@ -30,6 +31,8 @@ PyQt5-Qt5==5.15.2
 PyQt5_sip==12.17.0
 pystray==0.19.5
 python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
+pytz==2025.1
 realtime==2.3.0
 requests==2.32.3
 six==1.17.0
